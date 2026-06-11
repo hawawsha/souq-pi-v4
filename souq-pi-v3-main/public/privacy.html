@@ -1,0 +1,51 @@
+import Head from 'next/head';
+
+export default function Privacy() {
+  return (
+    <>
+      <Head>
+        <title>سياسة الخصوصية - Souq Pi</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet" />
+      </Head>
+      <style>{`
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#0a0118;color:#fff;font-family:'Cairo',sans-serif;direction:rtl;padding:20px;}
+        .container{max-width:600px;margin:0 auto;padding:20px;}
+        h1{color:#d4af37;font-size:1.5em;margin-bottom:20px;text-align:center;}
+        h2{color:#d4af37;font-size:1.1em;margin:20px 0 10px;}
+        p{color:#b0b0b0;line-height:1.8;margin-bottom:10px;font-size:0.9em;}
+        .header{background:#1a0b2e;padding:14px 20px;border-bottom:1px solid #d4af37;margin:-20px -20px 20px;display:flex;align-items:center;gap:10px;}
+        .back-btn{background:rgba(255,255,255,0.08);border:none;color:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;font-family:'Cairo';font-size:0.85em;}
+      `}</style>
+
+      <div className="header">
+        <button className="back-btn" onClick={() => window.history.back()}>← رجوع</button>
+        <div style={{fontWeight:900}}>سياسة الخصوصية</div>
+      </div>
+
+      <div className="container">
+        <h1>سياسة الخصوصية</h1>
+        <p>آخر تحديث: مايو 2026</p>
+
+        <h2>١. المعلومات التي نجمعها</h2>
+        <p>نجمع اسم المستخدم الخاص بك على شبكة Pi وعنوان المحفظة لإتمام عمليات الشراء والدفع داخل التطبيق.</p>
+
+        <h2>٢. كيف نستخدم معلوماتك</h2>
+        <p>نستخدم معلوماتك لمعالجة المدفوعات وعرض سجل طلباتك وتمكينك من التواصل مع البائعين.</p>
+
+        <h2>٣. مشاركة المعلومات</h2>
+        <p>لا نشارك معلوماتك الشخصية مع أطراف ثالثة إلا ما يلزم لإتمام عمليات الدفع عبر شبكة Pi Network.</p>
+
+        <h2>٤. تخزين البيانات</h2>
+        <p>يتم تخزين بيانات الطلبات بشكل آمن في قاعدة بياناتنا ولا يتم الاحتفاظ بأي بيانات مالية حساسة.</p>
+
+        <h2>٥. حقوقك</h2>
+        <p>يمكنك طلب حذف بياناتك في أي وقت عبر التواصل معنا على واتساب.</p>
+
+        <h2>٦. التواصل معنا</h2>
+        <p>إذا كان لديك أي استفسار حول سياسة الخصوصية، يرجى التواصل معنا عبر التطبيق.</p>
+      </div>
+    </>
+  );
+}
