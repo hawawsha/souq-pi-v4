@@ -62,11 +62,7 @@ export default function Home() {
   async function loginWithPi() {
     try {
       if (!window.Pi) { showToast('يرجى الفتح من متصفح Pi'); return; }
-      const auth = await window.Pi.authenticate(['username', 'payments', 'wallet_address'], {
-        onIncompletePaymentFound: (p) => {
-          console.log("معاملة غير مكتملة:", p);
-        }
-      });
+      const auth = await window.Pi.authenticate(['username', 'payments', 'wallet_address'], {});
       setUser(auth.user);
       localStorage.setItem('pi_username', auth.user.username);
       showToast(`مرحباً @${auth.user.username}`);
@@ -94,28 +90,18 @@ export default function Home() {
       metadata: { productId: p.id }
     }, {
       onReadyForServerApproval: (paymentId) => {
-        // تنفيذ الموافقة كما في التوثيق
         fetch('/api/payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'approve', paymentId })
-        }).catch(err => console.error("خطأ في الموافقة:", err));
+        }).catch(err => console.error(err));
       },
       onReadyForServerCompletion: (paymentId, tx) => {
         fetch('/api/payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'complete',
-            paymentId,
-            txid: tx?.txid || tx,
-            username: user.username,
-            productId: p.id
-          })
-        }).then(() => { 
-          showToast('تم الشراء بنجاح! 🎉'); 
-          setPaying(null); 
-        });
+          body: JSON.stringify({ action: 'complete', paymentId, txid: tx?.txid || tx, username: user.username, productId: p.id })
+        }).then(() => { showToast('تم الشراء بنجاح! 🎉'); setPaying(null); });
       },
       onCancel: () => setPaying(null),
       onError:  () => { showToast('فشل الدفع'); setPaying(null); }
@@ -151,8 +137,6 @@ export default function Home() {
         .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#1a0b2e;display:flex;justify-content:space-around;padding:12px;border-top:1px solid #6a0dad;z-index:1000;}
         .nav-wrap{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
         .nav-label{text-align:center;font-size:0.7em;color:#b0b0b0;}
-        .nav-label.active{color:#d4af37;}
-        .nav-badge{position:absolute;top:-4px;right:50%;transform:translateX(12px);background:#ef4444;border-radius:50%;min-width:17px;height:17px;font-size:0.6em;display:flex;align-items:center;justify-content:center;font-weight:900;}
         .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#6a0dad;padding:10px 20px;border-radius:20px;z-index:2000;max-width:90%;}
         .back-btn{background:rgba(255,255,255,0.08);border:none;color:#fff;padding:8px 14px;border-radius:10px;cursor:pointer;font-family:'Cairo';margin:12px;}
       `}</style>
@@ -162,10 +146,7 @@ export default function Home() {
           <div className="logo-circle">π</div>
           <div style={{ fontWeight:900 }}>Souq Pi <small style={{ color:'#d4af37' }}>v1</small></div>
         </div>
-        {user
-          ? <div style={{ color:'#d4af37', fontSize:'0.8em' }}>@{user.username}</div>
-          : <button onClick={loginWithPi} style={{ background:'#d4af37', border:'none', padding:'6px 15px', borderRadius:'20px', fontWeight:700, fontFamily:'Cairo', cursor:'pointer' }}>دخول</button>
-        }
+        {user ? <div style={{ color:'#d4af37', fontSize:'0.8em' }}>@{user.username}</div> : <button onClick={loginWithPi} style={{ background:'#d4af37', border:'none', padding:'6px 15px', borderRadius:'20px', fontWeight:700, fontFamily:'Cairo', cursor:'pointer' }}>دخول</button>}
       </nav>
 
       {page === 'home' ? (
@@ -175,14 +156,10 @@ export default function Home() {
             <div style={{ fontWeight:800, margin:'6px 0 2px' }}>{FEATURED[featuredIdx].title}</div>
             <div style={{ fontSize:'0.66em', color:'#b0b0b0' }}>{FEATURED[featuredIdx].sub}</div>
           </div>
-
           <div className="calc-box">
             <input className="calc-input" type="number" value={calcPi} onChange={e => setCalcPi(e.target.value)} placeholder="أدخل كمية π لمعرفة قيمتها" />
-            <div style={{ marginTop:10, color:'#4ade80', fontWeight:900, textAlign:'center' }}>
-              $ {calcPi && piPrice ? (calcPi * piPrice).toFixed(2) : '0.00'}
-            </div>
+            <div style={{ marginTop:10, color:'#4ade80', fontWeight:900, textAlign:'center' }}>$ {calcPi && piPrice ? (calcPi * piPrice).toFixed(2) : '0.00'}</div>
           </div>
-
           <div className="categories">
             {SECTIONS.map(s => (
               <div key={s.key} className="cat-card" style={{ background: s.gradient }} onClick={() => { setSection(s.key); setPage('section'); }}>
@@ -196,7 +173,7 @@ export default function Home() {
         <div>
           <button className="back-btn" onClick={() => { setPage('home'); setSection(null); }}>← رجوع</button>
           <div className="products">
-            {loading ? <p style={{gridColumn:'1/3'}}>جاري التحميل...</p> : products.map(r => (
+            {loading ? <p style={{gridColumn:'1/3', textAlign:'center'}}>جاري التحميل...</p> : products.map(r => (
               <div key={r.id} className="pcard">
                 <img className="pimg" src={r.fields.image_url} alt={r.fields.name} />
                 <div className="pinfo">
@@ -209,11 +186,11 @@ export default function Home() {
           </div>
         </div>
       )}
-
       <div className="bottom-nav">
         <div className="nav-wrap" onClick={() => { setPage('home'); setSection(null); }}><span>🏠</span><span className="nav-label">الرئيسية</span></div>
-        <div className="nav-wrap" onClick={() => window.location.href = '/my-orders'}><span>📦</span>{notifCount > 0 && <span className="nav-badge">{notifCount}</span>}<span className="nav-label">طلباتي</span></div>
+        <div className="nav-wrap" onClick={() => window.location.href = '/my-orders'}><span>📦</span><span className="nav-label">طلباتي</span></div>
       </div>
+      {toast && <div className="toast">{toast}</div>}
     </>
   );
 }
