@@ -106,7 +106,7 @@ export default function Home() {
     if (!user) { loginWithPi(); return; }
     setPaying(p.id);
     window.Pi.createPayment(
-      { amount: Number(p.fields.price_pi), memo: p.fields.name, metadata: { id: p.id } },
+      { amount: Number(p.fields.price_pi), memo: p.fields.name, metadata: { } },
       {
         onReadyForServerApproval: (id) => fetch('/api/payment', {
           method: 'POST',
