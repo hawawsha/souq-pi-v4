@@ -28,7 +28,6 @@ async function sendTelegram(text) {
   }).catch(() => {});
 }
 
-// Called server-side only — saves to Client_Notifications directly via Airtable
 async function saveClientNotif({ username, product_name, status_label, payment_id }) {
   if (!username || !AIRTABLE_TOKEN || !AIRTABLE_BASE) return;
   await AT('/Client_Notifications', 'POST', {
@@ -44,6 +43,8 @@ async function saveClientNotif({ username, product_name, status_label, payment_i
 }
 
 async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymentId, productName }) {
+  console.log('[refund] handleA2URefund called with:', { buyerUid, buyerWallet, amountPi, originalPaymentId });
+
   if (!PI_API_KEY) throw new Error('PI_NETWORK_API_KEY غير مُعيَّن');
   if (!buyerUid && !buyerWallet) throw new Error('buyer_uid أو buyer_wallet مطلوب');
   if (!amountPi || amountPi <= 0) throw new Error('المبلغ غير صالح');
@@ -56,15 +57,24 @@ async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymen
   if (buyerWallet) body.to_address = buyerWallet;
   else body.uid = buyerUid;
 
+  console.log('[refund] creating A2U payment with body:', JSON.stringify(body));
+
   const createRes = await fetch('https://api.minepi.com/v2/payments', {
     method: 'POST',
     headers: { Authorization: `Key ${PI_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
+
+  console.log('[refund] createRes status:', createRes.status);
+
   if (!createRes.ok) {
-    throw new Error(`Pi API رفض إنشاء الدفعة (${createRes.status})`);
+    const errBody = await createRes.text();
+    console.log('[refund] createRes error body:', errBody);
+    throw new Error(`Pi API رفض إنشاء الدفعة (${createRes.status}): ${errBody}`);
   }
   const createData  = await createRes.json();
+  console.log('[refund] createData:', JSON.stringify(createData));
+
   const refundPayId = createData.identifier;
   if (!refundPayId) throw new Error('لم يُرجع Pi معرّف الدفعة');
 
@@ -72,8 +82,13 @@ async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymen
     method: 'POST',
     headers: { Authorization: `Key ${PI_API_KEY}` }
   });
+
+  console.log('[refund] approveRes status:', approveRes.status);
+
   if (!approveRes.ok) {
-    throw new Error(`Pi API رفض الموافقة (${approveRes.status})`);
+    const errBody = await approveRes.text();
+    console.log('[refund] approveRes error body:', errBody);
+    throw new Error(`Pi API رفض الموافقة (${approveRes.status}): ${errBody}`);
   }
   return refundPayId;
 }
@@ -194,6 +209,8 @@ export default async function handler(req, res) {
       if (!rOk) return res.status(404).json({ error: 'سجل الاسترجاع غير موجود' });
       const f = refundRecord.fields;
 
+      console.log('[refund] refund record fields:', JSON.stringify(f));
+
       const orderCheck = await AT(
         `/Orders?filterByFormula=${encodeURIComponent(`{payment_id}="${f.payment_id}"`)}`
       );
@@ -202,15 +219,20 @@ export default async function handler(req, res) {
       }
 
       const order            = orderCheck.data.records[0].fields;
+      console.log('[refund] order fields:', JSON.stringify(order));
+
       const buyerUidFinal    = f.buyer_uid    || order.buyer_uid    || '';
       const buyerWalletFinal = f.buyer_wallet || order.buyer_wallet || '';
       const amountFinal      = parseFloat(f.amount_pi) || parseFloat(order.amount_pi) || 0;
       const productFinal     = f.product_name || order.product_name || 'منتج';
       const buyerName        = f.buyer_username || order.username   || '';
 
+      console.log('[refund] FINAL VALUES -> buyerUidFinal:', buyerUidFinal, '| buyerWalletFinal:', buyerWalletFinal, '| amountFinal:', amountFinal, '| buyerName:', buyerName);
+
       if (amountFinal <= 0) return res.status(400).json({ error: 'المبلغ غير صالح للاسترجاع' });
 
       if (!buyerUidFinal && !buyerWalletFinal) {
+        console.log('[refund] NO buyerUid AND NO buyerWallet -> manual_refund_needed');
         await AT(`/Refunds/${recordId}`, 'PATCH', {
           fields: { status: 'manual_refund_needed', manual_refund_note: 'buyer_uid و buyer_wallet غير موجودان' }
         });
@@ -226,11 +248,15 @@ export default async function handler(req, res) {
           buyerUid: buyerUidFinal, buyerWallet: buyerWalletFinal,
           amountPi: amountFinal, originalPaymentId: f.payment_id, productName: productFinal
         });
-      } catch (e) { a2uFailed = true; a2uError = e.message; }
+      } catch (e) {
+        a2uFailed = true;
+        a2uError  = e.message;
+        console.log('[refund] A2U FAILED with error:', a2uError);
+      }
 
       if (a2uFailed) {
         await markManualRefundNeeded(recordId, { buyerWallet: buyerWalletFinal, buyerUid: buyerUidFinal, amountPi: amountFinal, errorMsg: a2uError });
-        return res.status(200).json({ success: false, manual_required: true, message: 'A2U فشل — يرجى الاسترجاع يدوياً', buyer_wallet: buyerWalletFinal, amount_pi: amountFinal });
+        return res.status(200).json({ success: false, manual_required: true, message: 'A2U فشل — يرجى الاسترجاع يدوياً', error_detail: a2uError, buyer_wallet: buyerWalletFinal, amount_pi: amountFinal });
       }
 
       const { data: patchData } = await AT(`/Refunds/${recordId}`, 'PATCH', {
@@ -241,7 +267,8 @@ export default async function handler(req, res) {
       await saveClientNotif({ username: buyerName, product_name: productFinal, status_label: '✅ تمت الموافقة على استرجاع أموالك', payment_id: f.payment_id });
 
       return res.status(200).json({ success: true, refundPaymentId, data: patchData });
-    } catch {
+    } catch (e) {
+      console.log('[refund] OUTER CATCH ERROR:', e.message);
       return res.status(500).json({ error: 'خطأ في معالجة الاسترجاع' });
     }
   }
