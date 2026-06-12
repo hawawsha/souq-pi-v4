@@ -71,7 +71,24 @@ export default async function handler(req, res) {
       if (!verifyRes.ok) return res.status(500).json({ error: 'تعذّر التحقق من الدفع' });
 
       const verifyData = await verifyRes.json();
+      const verifyData = await verifyRes.json();
 
+// DEBUG: إرسال رد Pi الكامل إلى تيليجرام
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: `DEBUG VERIFY DATA:\n${JSON.stringify(verifyData, null, 2)}`
+      })
+    });
+  } catch {}
+}
       if (verifyData.transaction?.txid !== txid) {
         return res.status(400).json({ error: 'txid غير مطابق — الدفع مشبوه' });
       }
