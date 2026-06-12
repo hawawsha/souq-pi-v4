@@ -43,8 +43,6 @@ async function saveClientNotif({ username, product_name, status_label, payment_i
 }
 
 async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymentId, productName }) {
-  console.log('[refund] handleA2URefund called with:', { buyerUid, buyerWallet, amountPi, originalPaymentId });
-
   if (!PI_API_KEY) throw new Error('PI_NETWORK_API_KEY غير مُعيَّن');
   if (!buyerUid && !buyerWallet) throw new Error('buyer_uid أو buyer_wallet مطلوب');
   if (!amountPi || amountPi <= 0) throw new Error('المبلغ غير صالح');
@@ -57,7 +55,7 @@ async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymen
   if (buyerWallet) body.to_address = buyerWallet;
   else body.uid = buyerUid;
 
-  console.log('[refund] creating A2U payment with body:', JSON.stringify(body));
+  await sendTelegram(`DEBUG A2U body:\n${JSON.stringify(body)}`);
 
   const createRes = await fetch('https://api.minepi.com/v2/payments', {
     method: 'POST',
@@ -65,15 +63,13 @@ async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymen
     body: JSON.stringify(body)
   });
 
-  console.log('[refund] createRes status:', createRes.status);
-
   if (!createRes.ok) {
     const errBody = await createRes.text();
-    console.log('[refund] createRes error body:', errBody);
+    await sendTelegram(`DEBUG createRes FAILED: ${createRes.status}\n${errBody}`);
     throw new Error(`Pi API رفض إنشاء الدفعة (${createRes.status}): ${errBody}`);
   }
   const createData  = await createRes.json();
-  console.log('[refund] createData:', JSON.stringify(createData));
+  await sendTelegram(`DEBUG createData:\n${JSON.stringify(createData)}`);
 
   const refundPayId = createData.identifier;
   if (!refundPayId) throw new Error('لم يُرجع Pi معرّف الدفعة');
@@ -83,11 +79,9 @@ async function handleA2URefund({ buyerUid, buyerWallet, amountPi, originalPaymen
     headers: { Authorization: `Key ${PI_API_KEY}` }
   });
 
-  console.log('[refund] approveRes status:', approveRes.status);
-
   if (!approveRes.ok) {
     const errBody = await approveRes.text();
-    console.log('[refund] approveRes error body:', errBody);
+    await sendTelegram(`DEBUG approveRes FAILED: ${approveRes.status}\n${errBody}`);
     throw new Error(`Pi API رفض الموافقة (${approveRes.status}): ${errBody}`);
   }
   return refundPayId;
@@ -209,7 +203,7 @@ export default async function handler(req, res) {
       if (!rOk) return res.status(404).json({ error: 'سجل الاسترجاع غير موجود' });
       const f = refundRecord.fields;
 
-      console.log('[refund] refund record fields:', JSON.stringify(f));
+      await sendTelegram(`DEBUG refund record fields:\n${JSON.stringify(f)}`);
 
       const orderCheck = await AT(
         `/Orders?filterByFormula=${encodeURIComponent(`{payment_id}="${f.payment_id}"`)}`
@@ -218,8 +212,8 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'لا يوجد دفع مسجّل لهذا الطلب' });
       }
 
-      const order            = orderCheck.data.records[0].fields;
-      console.log('[refund] order fields:', JSON.stringify(order));
+      const order = orderCheck.data.records[0].fields;
+      await sendTelegram(`DEBUG order fields:\n${JSON.stringify(order)}`);
 
       const buyerUidFinal    = f.buyer_uid    || order.buyer_uid    || '';
       const buyerWalletFinal = f.buyer_wallet || order.buyer_wallet || '';
@@ -227,12 +221,12 @@ export default async function handler(req, res) {
       const productFinal     = f.product_name || order.product_name || 'منتج';
       const buyerName        = f.buyer_username || order.username   || '';
 
-      console.log('[refund] FINAL VALUES -> buyerUidFinal:', buyerUidFinal, '| buyerWalletFinal:', buyerWalletFinal, '| amountFinal:', amountFinal, '| buyerName:', buyerName);
+      await sendTelegram(`DEBUG FINAL VALUES:\nbuyerUidFinal: ${buyerUidFinal}\nbuyerWalletFinal: ${buyerWalletFinal}\namountFinal: ${amountFinal}\nbuyerName: ${buyerName}`);
 
       if (amountFinal <= 0) return res.status(400).json({ error: 'المبلغ غير صالح للاسترجاع' });
 
       if (!buyerUidFinal && !buyerWalletFinal) {
-        console.log('[refund] NO buyerUid AND NO buyerWallet -> manual_refund_needed');
+        await sendTelegram(`DEBUG: NO buyerUid AND NO buyerWallet -> manual_refund_needed`);
         await AT(`/Refunds/${recordId}`, 'PATCH', {
           fields: { status: 'manual_refund_needed', manual_refund_note: 'buyer_uid و buyer_wallet غير موجودان' }
         });
@@ -251,7 +245,7 @@ export default async function handler(req, res) {
       } catch (e) {
         a2uFailed = true;
         a2uError  = e.message;
-        console.log('[refund] A2U FAILED with error:', a2uError);
+        await sendTelegram(`DEBUG A2U FAILED:\n${a2uError}`);
       }
 
       if (a2uFailed) {
@@ -268,7 +262,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ success: true, refundPaymentId, data: patchData });
     } catch (e) {
-      console.log('[refund] OUTER CATCH ERROR:', e.message);
+      await sendTelegram(`DEBUG OUTER CATCH ERROR:\n${e.message}`);
       return res.status(500).json({ error: 'خطأ في معالجة الاسترجاع' });
     }
   }
