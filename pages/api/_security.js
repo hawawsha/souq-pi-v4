@@ -3,29 +3,92 @@
  * Import and apply at the top of every handler.
  */
 
-/** Strip dangerous characters from user-supplied strings */
+import { timingSafeEqual, createHash } from 'crypto';
+
+/** Strip dangerous characters and control characters from user-supplied strings */
 export function sanitize(val, maxLen = 200) {
   if (typeof val !== 'string') return '';
-  return val.trim().slice(0, maxLen).replace(/[<>"'`\\]/g, '');
+  return val
+    .trim()
+    .slice(0, maxLen)
+    // إزالة أحرف التحكم (control characters) مثل \n \t \r وغيرها
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    // إزالة أحرف خطرة في HTML/Airtable formulas
+    .replace(/[<>"'`\\]/g, '');
 }
 
-/** Validate and return ADMIN_SECRET_KEY. Returns false + 401 if invalid. */
+/** Sanitize and validate a number within a range. Returns null if invalid. */
+export function sanitizeNumber(val, min = 0, max = 999999) {
+  const n = parseFloat(val);
+  if (isNaN(n) || !isFinite(n) || n < min || n > max) return null;
+  return n;
+}
+
+/**
+ * Validate ADMIN_SECRET_KEY using a hash-based, timing-safe comparison.
+ * Hashing both values to a fixed length (SHA-256) before comparison
+ * eliminates any timing signal related to the original string length.
+ */
 export function checkAdmin(req, res) {
   const supplied = (req.headers['x-admin-key'] || '').toString().trim();
   const expected = process.env.ADMIN_SECRET_KEY;
-  if (!expected || !supplied || supplied !== expected) {
+
+  if (!expected || !supplied) {
     res.status(401).json({ error: 'غير مصرح' });
     return false;
   }
+
+  try {
+    const suppliedHash = createHash('sha256').update(supplied).digest();
+    const expectedHash = createHash('sha256').update(expected).digest();
+
+    // both hashes are always 32 bytes — no length-based timing leak
+    if (!timingSafeEqual(suppliedHash, expectedHash)) {
+      res.status(401).json({ error: 'غير مصرح' });
+      return false;
+    }
+  } catch {
+    res.status(401).json({ error: 'غير مصرح' });
+    return false;
+  }
+
   return true;
 }
 
-/** Security headers on every response */
+/** Security headers on every response — includes CSP, HSTS, and Permissions-Policy */
 export function secHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // HSTS — يجبر المتصفح على HTTPS دائماً
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+
+  // Permissions-Policy — يعطّل واجهات المتصفح غير المستخدمة
+  res.setHeader(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()'
+  );
+
+  // X-Permitted-Cross-Domain-Policies — يمنع Flash/PDF من قراءة الاستجابة عبر النطاقات
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+
+  // CSP — يمنع تحميل موارد غير موثوقة
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://sdk.minepi.com https://fonts.googleapis.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com",
+      "img-src 'self' data: https:",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self' https://api.minepi.com https://api.airtable.com https://api.telegram.org",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ].join('; ')
+  );
 }
 
 /** Reject bodies that are too large (default 8 KB) */
