@@ -71,7 +71,7 @@ export default async function handler(req, res) {
       if (!verifyRes.ok) return res.status(500).json({ error: 'تعذّر التحقق من الدفع' });
 
       const verifyData = await verifyRes.json();
-      const verifyData = await verifyRes.json();
+      
 
 // DEBUG: إرسال رد Pi الكامل إلى تيليجرام
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
