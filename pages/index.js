@@ -15,6 +15,18 @@ const FEATURED = [
   { icon: '🏠', title: 'عقارات مميزة',     sub: 'فلل · شقق · أراضي' },
 ];
 
+// ── Helper: تحقق من رابط الصورة (يمنع روابط غير http/https أو امتدادات غريبة) ──
+function isValidImageUrl(url) {
+  return typeof url === 'string' && /^https:\/\/.+\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$/i.test(url);
+}
+
+// ── Helper: تحقق من قيمة الحاسبة (رقم منطقي فقط) ──
+function isValidCalcValue(val) {
+  if (val === '') return true;
+  const num = parseFloat(val);
+  return !isNaN(num) && isFinite(num) && num >= 0 && num <= 1000000;
+}
+
 export default function Home() {
   const piPrice = usePiPrice();
   const [user,        setUser]        = useState(null);
@@ -31,7 +43,6 @@ export default function Home() {
   useEffect(() => {
     const initPi = async () => {
       if (typeof window !== 'undefined' && window.Pi) {
-        // Mainnet
         window.Pi.init({ version: '2.0', sandbox: true });
       } else {
         setTimeout(initPi, 500);
@@ -106,6 +117,7 @@ export default function Home() {
 
   function buyWithPi(p) {
     if (!user) { loginWithPi(); return; }
+    if (paying) return; // منع الضغط المتكرر أثناء معالجة دفعة أخرى
     setPaying(p.id);
 
     window.Pi.createPayment({
@@ -163,6 +175,8 @@ export default function Home() {
         <title>Souq Pi — سوق Pi</title>
         <script src="https://sdk.minepi.com/pi-sdk.js" />
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet" />
       </Head>
 
@@ -217,11 +231,16 @@ export default function Home() {
               className="calc-input"
               type="number"
               value={calcPi}
-              onChange={e => setCalcPi(e.target.value)}
+              onChange={e => {
+                const val = e.target.value;
+                if (isValidCalcValue(val)) setCalcPi(val);
+              }}
+              min="0"
+              step="0.01"
               placeholder="أدخل كمية π لمعرفة قيمتها"
             />
             <div style={{ marginTop:10, color:'#4ade80', fontWeight:900, textAlign:'center', fontSize:'1.1em' }}>
-              $ {calcPi && piPrice ? (calcPi * piPrice).toFixed(2) : '0.00'}
+              $ {calcPi && isValidCalcValue(calcPi) && piPrice ? (parseFloat(calcPi) * piPrice).toFixed(2) : '0.00'}
             </div>
           </div>
 
@@ -250,14 +269,14 @@ export default function Home() {
               <p style={{ gridColumn:'1/3', textAlign:'center', padding:40, color:'#b0b0b0' }}>لا توجد منتجات بعد</p>
             ) : products.map(r => (
               <div key={r.id} className="pcard">
-                {r.fields.image_url
-                  ? <img className="pimg" src={r.fields.image_url} alt={r.fields.name} />
+                {isValidImageUrl(r.fields.image_url)
+                  ? <img className="pimg" src={r.fields.image_url} alt={r.fields.name || 'منتج'} loading="lazy" />
                   : <div className="pimg" style={{ display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2.5em' }}>📦</div>
                 }
                 <div className="pinfo">
                   <div style={{ fontSize:'0.75em', fontWeight:700, height:'35px', overflow:'hidden' }}>{r.fields.name}</div>
                   <div style={{ color:'#d4af37', fontWeight:900, margin:'5px 0' }}>π {Number(r.fields.price_pi).toFixed(2)}</div>
-                  <button className="buybtn" onClick={() => buyWithPi(r)} disabled={paying === r.id}>
+                  <button className="buybtn" onClick={() => buyWithPi(r)} disabled={paying === r.id || !!paying}>
                     {paying === r.id ? '⏳ جاري...' : 'شراء بـ Pi'}
                   </button>
                 </div>
