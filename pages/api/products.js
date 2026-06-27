@@ -84,6 +84,15 @@ async function listProducts(req, res) {
 }
 
 async function createProduct(req, res) {
+  const adminSecret = req.headers["x-admin-secret"];
+
+  if (adminSecret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthorized"
+    });
+  }
+
   try {
     const { name, description, price, category, images, stock, seller } = req.body;
 
