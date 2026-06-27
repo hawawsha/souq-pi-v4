@@ -8,14 +8,21 @@ export default function handler(req, res) {
 
   const { secret } = req.body;
 
-  if (secret === process.env.ADMIN_SECRET) {
-    return res.status(200).json({
-      success: true
+  if (!secret) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing secret"
     });
   }
 
-  return res.status(401).json({
-    success: false,
-    error: "كلمة المرور غير صحيحة"
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthorized"
+    });
+  }
+
+  return res.status(200).json({
+    success: true
   });
 }
