@@ -1,143 +1,60 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Admin() {
   const [secret, setSecret] = useState("");
   const [logged, setLogged] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [products, setProducts] = useState([]);
   const [msg, setMsg] = useState("");
 
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    category: "",
-    image: "",
-    stock: 1,
-    uid: "",
-    username: "",
-    wallet: ""
-  });
-
-  const change = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  async function login() {
+  const login = async () => {
     const res = await fetch("/api/admin/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        secret
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret }),
     });
 
     const data = await res.json();
 
     if (data.success) {
       setLogged(true);
+      loadProducts();
     } else {
       alert("Wrong secret");
     }
-  }
+  };
 
-  async function uploadImage(e) {
-    const file = e.target.files[0];
+  const loadProducts = async () => {
+    const res = await fetch("/api/products");
+    const data = await res.json();
 
-    if (!file) return;
-
-    setUploading(true);
-
-    const body = new FormData();
-    body.append("image", file);
-
-    try {
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: {
-          "x-admin-secret": secret
-        },
-        body
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setForm((old) => ({
-          ...old,
-          image: data.image.url
-        }));
-      } else {
-        alert(data.error);
-      }
-    } catch (err) {
-      alert("Upload failed");
+    if (data.success) {
+      setProducts(data.data.products);
     }
+  };
 
-    setUploading(false);
-  }
-
-  async function addProduct() {
-    setLoading(true);
-    setMsg("");
-
-    const res = await fetch("/api/products", {
-      method: "POST",
+  const deleteProduct = async (productId) => {
+    const res = await fetch("/api/admin/delete-product", {
+      method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        "x-admin-secret": secret
+        "x-admin-secret": secret,
       },
-      body: JSON.stringify({
-        name: form.name,
-        description: form.description,
-        price: Number(form.price),
-        category: form.category,
-        images: form.image ? [form.image] : [],
-        stock: Number(form.stock),
-        seller: {
-          uid: form.uid,
-          username: form.username,
-          walletAddress: form.wallet
-        }
-      })
+      body: JSON.stringify({ productId }),
     });
 
     const data = await res.json();
 
     if (data.success) {
-      setMsg("✅ Product Added");
-
-      setForm({
-        name: "",
-        description: "",
-        price: "",
-        category: "",
-        image: "",
-        stock: 1,
-        uid: "",
-        username: "",
-        wallet: ""
-      });
+      setMsg("✅ Deleted");
+      loadProducts();
     } else {
       setMsg("❌ " + data.error);
     }
-
-    setLoading(false);
-  }
+  };
 
   if (!logged) {
     return (
-      <div
-        style={{
-          maxWidth: 400,
-          margin: "80px auto"
-        }}
-      >
+      <div style={{ maxWidth: 400, margin: "80px auto" }}>
         <h2>Admin Login</h2>
 
         <input
@@ -145,185 +62,57 @@ export default function Admin() {
           placeholder="Admin Secret"
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 12
-          }}
+          style={{ width: "100%", padding: 10 }}
         />
 
-        <button
-          onClick={login}
-          style={{
-            width: "100%",
-            padding: 15,
-            marginTop: 10
-          }}
-        >
+        <button onClick={login} style={{ width: "100%", padding: 15, marginTop: 10 }}>
           Login
         </button>
       </div>
     );
-  }  return (
-    <div
-      style={{
-        maxWidth: 650,
-        margin: "40px auto",
-        padding: 20,
-      }}
-    >
-      <h2>Admin Panel - Add Product</h2>
+  }
 
-      <input
-        name="name"
-        placeholder="Product Name"
-        value={form.name}
-        onChange={change}
-        style={s}
-      />
+  return (
+    <div style={{ maxWidth: 900, margin: "40px auto" }}>
+      <h2>Admin Panel</h2>
 
-      <textarea
-        name="description"
-        placeholder="Description"
-        value={form.description}
-        onChange={change}
-        style={{
-          ...s,
-          height: 100,
-        }}
-      />
+      {msg && <p>{msg}</p>}
 
-      <input
-        name="price"
-        placeholder="Price (PI)"
-        value={form.price}
-        onChange={change}
-        style={s}
-      />
-
-      <input
-        name="category"
-        placeholder="Category"
-        value={form.category}
-        onChange={change}
-        style={s}
-      />
-
-      <input
-        name="stock"
-        placeholder="Stock"
-        value={form.stock}
-        onChange={change}
-        style={s}
-      />
-
-      <hr style={{ margin: "20px 0" }} />
-
-      <h3>Product Image</h3>
-
-      <input
-        type="file"
-        accept="image/*"
-        onChange={uploadImage}
-        style={s}
-      />
-
-      {uploading && (
-        <p>Uploading image...</p>
-      )}
-
-      {form.image && (
-        <>
-          <img
-            src={form.image}
-            alt="preview"
+      <div style={{ display: "grid", gap: 15 }}>
+        {products.map((p) => (
+          <div
+            key={p.productId}
             style={{
-              width: "100%",
-              maxHeight: 250,
-              objectFit: "cover",
+              border: "1px solid #ddd",
+              padding: 15,
               borderRadius: 10,
-              marginTop: 15,
             }}
-          />
+          >
+            {p.images?.[0] && (
+              <img
+                src={p.images[0]}
+                style={{ width: 120, height: 120, objectFit: "cover" }}
+              />
+            )}
 
-          <input
-            value={form.image}
-            readOnly
-            style={s}
-          />
-        </>
-      )}
+            <h3>{p.name}</h3>
+            <p>{p.price} PI</p>
 
-      <hr style={{ margin: "20px 0" }} />
-
-      <h3>Seller Information</h3>
-
-      <input
-        name="uid"
-        placeholder="Seller UID"
-        value={form.uid}
-        onChange={change}
-        style={s}
-      />
-
-      <input
-        name="username"
-        placeholder="Seller Username"
-        value={form.username}
-        onChange={change}
-        style={s}
-      />
-
-      <input
-        name="wallet"
-        placeholder="Wallet Address"
-        value={form.wallet}
-        onChange={change}
-        style={s}
-      />
-
-      <button
-        disabled={loading || uploading}
-        onClick={addProduct}
-        style={btn}
-      >
-        {loading
-          ? "Saving..."
-          : uploading
-          ? "Uploading..."
-          : "Add Product"}
-      </button>
-
-      {msg && (
-        <p
-          style={{
-            marginTop: 20,
-            fontWeight: "bold",
-          }}
-        >
-          {msg}
-        </p>
-      )}
+            <button
+              onClick={() => deleteProduct(p.productId)}
+              style={{
+                background: "red",
+                color: "white",
+                padding: 10,
+                border: "none",
+                borderRadius: 5,
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
-
-const s = {
-  width: "100%",
-  padding: 12,
-  marginTop: 10,
-  borderRadius: 6,
-  border: "1px solid #ccc",
-  boxSizing: "border-box",
-};
-
-const btn = {
-  width: "100%",
-  padding: 15,
-  marginTop: 20,
-  border: "none",
-  borderRadius: 8,
-  background: "#1b74e4",
-  color: "#fff",
-  fontSize: 16,
-  cursor: "pointer",
-};
