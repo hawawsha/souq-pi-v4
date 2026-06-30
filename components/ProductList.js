@@ -2,6 +2,7 @@ export default function ProductList({
   products,
   adminSecret,
   reloadProducts,
+  onEdit,
 }) {
   async function deleteProduct(productId) {
     if (!confirm("Delete this product?")) return;
