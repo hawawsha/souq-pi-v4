@@ -3,11 +3,15 @@ import { useState, useEffect } from "react";
 import AdminLogin from "../components/AdminLogin";
 import ProductForm from "../components/ProductForm";
 import ProductList from "../components/ProductList";
+import EditProductModal from "../components/EditProductModal";
 
 export default function AdminPage() {
   const [logged, setLogged] = useState(false);
   const [adminSecret, setAdminSecret] = useState("");
   const [products, setProducts] = useState([]);
+
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   async function loadProducts() {
     try {
@@ -58,7 +62,20 @@ export default function AdminPage() {
         products={products}
         adminSecret={adminSecret}
         reloadProducts={loadProducts}
+        onEdit={(product) => {
+          setEditingProduct(product);
+          setShowEdit(true);
+        }}
       />
+
+      {showEdit && (
+        <EditProductModal
+          product={editingProduct}
+          adminSecret={adminSecret}
+          onClose={() => setShowEdit(false)}
+          onSaved={loadProducts}
+        />
+      )}
     </div>
   );
 }
