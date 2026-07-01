@@ -29,7 +29,6 @@ export default function ProductList({
       alert("✅ Product deleted");
 
       reloadProducts();
-
     } catch (err) {
       console.error(err);
       alert("Delete failed");
@@ -95,42 +94,46 @@ export default function ProductList({
             </p>
 
             <div
-  style={{
-    display: "flex",
-    gap: 10,
-    marginTop: 10,
-  }}
->
-  <button
-    onClick={() => onEdit(product)}
-    style={{
-      flex: 1,
-      padding: 12,
-      background: "#0984e3",
-      color: "#fff",
-      border: "none",
-      borderRadius: 6,
-      cursor: "pointer",
-    }}
-  >
-    ✏️ Edit
-  </button>
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+              }}
+            >
+              <button
+                onClick={() => {
+                  console.log("EDIT CLICKED", product);
+                  alert("Edit button clicked");
+                  onEdit(product);
+                }}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  background: "#0984e3",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                ✏️ Edit
+              </button>
 
-  <button
-    onClick={() => deleteProduct(product.productId)}
-    style={{
-      flex: 1,
-      padding: 12,
-      background: "#e74c3c",
-      color: "#fff",
-      border: "none",
-      borderRadius: 6,
-      cursor: "pointer",
-    }}
-  >
-    🗑 Delete
-  </button>
-</div>
+              <button
+                onClick={() => deleteProduct(product.productId)}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  background: "#e74c3c",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                🗑 Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
