@@ -103,7 +103,6 @@ export default function ProductList({
               <button
                 onClick={() => {
                   console.log("EDIT CLICKED", product);
-                  alert("Edit button clicked");
                   onEdit(product);
                 }}
                 style={{
