@@ -20,6 +20,15 @@ export default function EditProductModal({
 
   const [imageUrl, setImageUrl] = useState("");
 
+  const input = {
+    width: "100%",
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 6,
+    border: "1px solid #ccc",
+    boxSizing: "border-box",
+  };
+
   useEffect(() => {
     if (!product) return;
 
@@ -70,7 +79,6 @@ export default function EditProductModal({
 
       onSaved();
       onClose();
-
     } catch (err) {
       console.error(err);
       alert("Update failed");
@@ -78,7 +86,8 @@ export default function EditProductModal({
 
     setLoading(false);
   }
- if (!product) return null;
+
+  if (!product) return null;
 
   return (
     <div
@@ -168,6 +177,7 @@ export default function EditProductModal({
               color: "#fff",
               border: "none",
               borderRadius: 6,
+              cursor: "pointer",
             }}
           >
             {loading ? "Saving..." : "Save"}
@@ -180,4 +190,15 @@ export default function EditProductModal({
               padding: 14,
               background: "#d63031",
               color: "#fff",
-             
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
