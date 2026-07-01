@@ -94,21 +94,43 @@ export default function ProductList({
               <b>Stock:</b> {product.stock}
             </p>
 
-            <button
-              onClick={() => deleteProduct(product.productId)}
-              style={{
-                width: "100%",
-                padding: 12,
-                marginTop: 10,
-                background: "#e74c3c",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-              }}
-            >
-              Delete
-            </button>
+            <div
+  style={{
+    display: "flex",
+    gap: 10,
+    marginTop: 10,
+  }}
+>
+  <button
+    onClick={() => onEdit(product)}
+    style={{
+      flex: 1,
+      padding: 12,
+      background: "#0984e3",
+      color: "#fff",
+      border: "none",
+      borderRadius: 6,
+      cursor: "pointer",
+    }}
+  >
+    ✏️ Edit
+  </button>
+
+  <button
+    onClick={() => deleteProduct(product.productId)}
+    style={{
+      flex: 1,
+      padding: 12,
+      background: "#e74c3c",
+      color: "#fff",
+      border: "none",
+      borderRadius: 6,
+      cursor: "pointer",
+    }}
+  >
+    🗑 Delete
+  </button>
+</div>
           </div>
         ))}
       </div>
