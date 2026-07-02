@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePiPrice } from '../contexts/PiPriceContext';
 
 export default function Home() {
@@ -65,35 +66,46 @@ export default function Home() {
 
             {products.map(product => (
 
-              <div key={product.productId} className="product-card">
+              <Link
+                key={product.productId}
+                href={`/product/${product.productId}`}
+                style={{
+                  textDecoration: "none",
+                  color: "inherit",
+                }}
+              >
 
-                {product.images?.length > 0 && (
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="product-image"
-                  />
-                )}
+                <div className="product-card">
 
-                <h3>{product.name}</h3>
+                  {product.images?.length > 0 && (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="product-image"
+                    />
+                  )}
 
-                <p>{product.description}</p>
+                  <h3>{product.name}</h3>
 
-                <div className="price">
-                  <span className="pi-price">
-                    {product.price} PI
-                  </span>
+                  <p>{product.description}</p>
 
-                  <span className="usd-price">
-                    ≈ ${convertToUSD(product.price)} USD
-                  </span>
+                  <div className="price">
+                    <span className="pi-price">
+                      {product.price} PI
+                    </span>
+
+                    <span className="usd-price">
+                      ≈ ${convertToUSD(product.price)} USD
+                    </span>
+                  </div>
+
+                  <div className="rating">
+                    ⭐ {product.ratings?.average || 0} ({product.ratings?.count || 0} reviews)
+                  </div>
+
                 </div>
 
-                <div className="rating">
-                  ⭐ {product.ratings?.average || 0} ({product.ratings?.count || 0} reviews)
-                </div>
-
-              </div>
+              </Link>
 
             ))}
 
@@ -145,6 +157,7 @@ export default function Home() {
           padding: 20px;
           transition: transform 0.2s;
           background: white;
+          cursor: pointer;
         }
 
         .product-card:hover {
